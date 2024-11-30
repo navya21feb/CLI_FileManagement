@@ -1,5 +1,5 @@
 # File Management CLI
-A powerful and feature-rich Command Line Interface (CLI) file management system designed for automating and simplifying file handling tasks in a terminal environment. This project allows users to perform common file operations like creating, deleting, renaming, and viewing files, as well as advanced features like managing file metadata, counting words, and maintaining a history of executed commands.
+A powerful and feature-rich Command Line Interface (CLI) file management system designed for automating and simplifying file handling tasks in a terminal environment. This project allows users to perform common file operations like creating, deleting, renaming, and viewing files, as well as advanced features like managing file metadata, counting words, and maintaining a history of executed commands.  
 
 ## Features:
 Basic File Operations:  
