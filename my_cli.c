@@ -120,12 +120,68 @@ void move_file(const char *filename, const char *new_location) {
         perror("Error deleting original file after moving");
     }
 }
-void search_file(const char *filter) {
+void search_file() {
+    char search_type[10];
+    char input[256];
     char command[512];
-    snprintf(command, sizeof(command), "find . -name \"%s\"", filter);
-    system(command);
+    char result[1024];
+    FILE *fp;
+
+    // Ask user for search type
+    printf("Do you want to search by name or type? (Enter 'name' or 'type'): ");
+    scanf("%s", search_type);
+
+    // Handle search by name
+    if (strcmp(search_type, "name") == 0) {
+        printf("Enter the file name to search: ");
+        scanf("%s", input);
+        snprintf(command, sizeof(command), "find . -name \"%s\"", input);
+
+        // Execute the command and capture output
+        fp = popen(command, "r");
+        if (fp == NULL) {
+            printf("Failed to run command.\n");
+            return;
+        }
+
+        if (fgets(result, sizeof(result), fp) != NULL) {
+            printf("Yes, the file exists: %s", result);
+        } else {
+            printf("No, the file does not exist.\n");
+        }
+        pclose(fp);
+    }
+    // Handle search by type
+    else if (strcmp(search_type, "type") == 0) {
+        printf("Enter the file extension (e.g., .txt, .c): ");
+        scanf("%s", input);
+        snprintf(command, sizeof(command), "find . -type f -name \"*%s\"", input);
+
+        // Execute the command and capture output
+        fp = popen(command, "r");
+        if (fp == NULL) {
+            printf("Failed to run command.\n");
+            return;
+        }
+
+        int found = 0;
+        while (fgets(result, sizeof(result), fp) != NULL) {
+            printf("%s", result);
+            found = 1;
+        }
+        if (!found) {
+            printf("No files found with the extension %s.\n", input);
+        }
+        pclose(fp);
+    }
+    // Handle invalid search type
+    else {
+        printf("Invalid search type. Please enter 'name' or 'type'.\n");
+    }
+
     log_command("search");
 }
+
 
 void view_file_metadata(const char *filename) {
     char command[512];
@@ -173,6 +229,78 @@ void count_words_in_file(const char *filename) {
     log_command("count_words");
 }
 
+void compress(const char *filename) {
+    FILE *source = fopen(filename, "r");
+    if (source == NULL) {
+        perror("Error opening source file");
+        return;
+    }
+
+    char compressed_filename[512];
+    snprintf(compressed_filename, sizeof(compressed_filename), "%s.gz", filename);
+    FILE *destination = fopen(compressed_filename, "w");
+    if (destination == NULL) {
+        perror("Error opening destination file");
+        fclose(source);
+        return;
+    }
+
+    // Implementing the compression logic (basic run-length encoding)
+    int count;
+    char current, next;
+
+    current = fgetc(source);
+    while (current != EOF) {
+        count = 1;
+        next = fgetc(source);
+        while (next == current) {
+            count++;
+            next = fgetc(source);
+        }
+
+        fprintf(destination, "%d%c", count, current);
+        current = next;
+    }
+
+    fclose(source);
+    fclose(destination);
+
+    printf("File compressed successfully: %s\n", compressed_filename);
+    log_command("compress");
+}
+
+void decompress(const char *filename) {
+    FILE *source = fopen(filename, "r");
+    if (source == NULL) {
+        perror("Error opening source file");
+        return;
+    }
+
+    char decompressed_filename[512];
+    snprintf(decompressed_filename, sizeof(decompressed_filename), "%s_dec.txt", filename);
+    FILE *destination = fopen(decompressed_filename, "w");
+    if (destination == NULL) {
+        perror("Error opening destination file");
+        fclose(source);
+        return;
+    }
+
+    int count;
+    char character;
+
+    while (fscanf(source, "%d%c", &count, &character) != EOF) {
+        for (int i = 0; i < count; i++) {
+            fputc(character, destination);
+        }
+    }
+
+    fclose(source);
+    fclose(destination);
+
+    printf("File decompressed successfully: %s\n", decompressed_filename);
+    log_command("decompress");
+}
+
 void parse_command(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s <command> <filename> [<newname>/<new_location>]\n", argv[0]);
@@ -197,16 +325,20 @@ void parse_command(int argc, char *argv[]) {
         const char *new_location = argv[3];
         move_file(filename, new_location);
     } else if (strcmp(command, "search") == 0) {
-        search_file(filename);
+        search_file();
     } else if (strcmp(command, "view_metadata") == 0) {
         view_file_metadata(filename);
-    } else if (strcmp(command, "copy") == 0) {
+    } else if (strcmp(command, "copy") == 0 && argc == 4) {
         const char *new_location = argv[3];
         copy_file(filename, new_location);
     } else if (strcmp(command, "show_creation_date") == 0) {
         show_creation_date(filename);
     } else if (strcmp(command, "count_words") == 0) {
         count_words_in_file(filename);
+    } else if (strcmp(command, "compress") == 0) {
+        compress(filename);
+    } else if (strcmp(command, "decompress") == 0) {
+        decompress(filename);
     } else {
         printf("Invalid command.\n");
     }
