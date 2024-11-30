@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 
 void log_command(const char *command) {
     FILE *history_fp = fopen("command_history.txt", "a");
@@ -13,6 +15,13 @@ void log_command(const char *command) {
 }
 
 void create_file(const char *filename) {
+    FILE *test_fp = fopen(filename, "r");
+    if (test_fp != NULL) {
+        fclose(test_fp); // Close the file if it exists
+        printf("Error: File '%s' already exists.\n", filename);
+        return;
+    }
+
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) {
         perror("Error creating file");
@@ -111,7 +120,58 @@ void move_file(const char *filename, const char *new_location) {
         perror("Error deleting original file after moving");
     }
 }
+void search_file(const char *filter) {
+    char command[512];
+    snprintf(command, sizeof(command), "find . -name \"%s\"", filter);
+    system(command);
+    log_command("search");
+}
 
+void view_file_metadata(const char *filename) {
+    char command[512];
+    snprintf(command, sizeof(command), "stat %s", filename);
+    system(command);
+    log_command("view_metadata");
+}
+
+void copy_file(const char *filename, const char *new_location) {
+    char command[512];
+    snprintf(command, sizeof(command), "cp %s %s", filename, new_location);
+    if (system(command) == 0) {
+        printf("File copied successfully to %s\n", new_location);
+        log_command("copy");
+    } else {
+        perror("Error copying file");
+    }
+}
+
+void show_creation_date(const char *filename) {
+    struct stat file_stat;
+    if (stat(filename, &file_stat) == 0) {
+        printf("File created on: %s", ctime(&file_stat.st_ctime));
+    } else {
+        perror("Error retrieving file creation date");
+    }
+    log_command("show_creation_date");
+}
+
+void count_words_in_file(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    int word_count = 0;
+    char word[256];
+    while (fscanf(fp, "%255s", word) == 1) {
+        word_count++;
+    }
+
+    fclose(fp);
+    printf("The file contains %d words.\n", word_count);
+    log_command("count_words");
+}
 
 void parse_command(int argc, char *argv[]) {
     if (argc < 2) {
@@ -136,8 +196,19 @@ void parse_command(int argc, char *argv[]) {
     } else if (strcmp(command, "move") == 0 && argc == 4) {
         const char *new_location = argv[3];
         move_file(filename, new_location);
+    } else if (strcmp(command, "search") == 0) {
+        search_file(filename);
+    } else if (strcmp(command, "view_metadata") == 0) {
+        view_file_metadata(filename);
+    } else if (strcmp(command, "copy") == 0) {
+        const char *new_location = argv[3];
+        copy_file(filename, new_location);
+    } else if (strcmp(command, "show_creation_date") == 0) {
+        show_creation_date(filename);
+    } else if (strcmp(command, "count_words") == 0) {
+        count_words_in_file(filename);
     } else {
-        printf("Invalid command. Use 'create', 'delete', 'view', 'write', 'rename', or 'move'.\n");
+        printf("Invalid command.\n");
     }
 }
 
